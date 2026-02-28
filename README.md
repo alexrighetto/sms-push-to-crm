@@ -2,15 +2,15 @@
 
 > A local-first bridge that turns iMessage into a CRM data source.
 
-Incremental sync bridge that sends iMessage/SMS conversations
+Incremental sync bridge that sends iMessage/SMS conversations  
 from macOS Messages.app into EspoCRM via n8n webhook.
 
 ---
 
 ## What is this?
 
-A lightweight macOS bridge that reads iMessage/SMS conversations
-from the local Messages database and pushes them into a CRM
+A lightweight macOS bridge that reads iMessage/SMS conversations  
+from the local Messages database and pushes them into a CRM  
 (EspoCRM via n8n webhook) using safe incremental synchronization.
 
 Designed for self-hosted workflows and full data ownership.
@@ -53,13 +53,39 @@ EspoCRM Timeline
 
 ---
 
+## macOS Permission Requirement (Important)
+
+macOS protects the Messages database using system privacy controls.
+
+You must grant **Full Disk Access** to the application running the bridge  
+(for example Terminal or iTerm).
+
+### Steps
+
+1. Open **System Settings**
+2. Go to **Privacy & Security**
+3. Open **Full Disk Access**
+4. Add:
+   - Terminal.app (or your terminal application)
+5. Restart Terminal
+
+Without this permission the script may fail with:
+
+Operation not permitted
+
+or:
+
+sqlite3.OperationalError: unable to open database file
+
+This is expected macOS behavior and not a bug in the bridge.
+
+---
+
 ## Quick Install (Recommended)
 
 Run the installer:
 
-```bash
 bash install.sh
-```
 
 The installer will:
 
@@ -102,9 +128,7 @@ No manual action is required after reboot.
 
 Remove the cron job:
 
-```bash
 crontab -e
-```
 
 Delete the line containing `send_sms.py`, then save.
 
@@ -112,18 +136,14 @@ Delete the line containing `send_sms.py`, then save.
 
 Run:
 
-```bash
 bash uninstall.sh
-```
 
 This removes the background job.
 
 To delete all local data:
 
-```bash
 rm -rf ~/sms_bridge
 rm -rf ~/crm_sync
-```
 
 ---
 
@@ -131,35 +151,27 @@ rm -rf ~/crm_sync
 
 1. Clone the repository
 
-```bash
 git clone https://github.com/alexrighetto/sms-push-to-crm.git
-```
 
 2. Create configuration:
 
-```bash
 cp config.example.py config.py
-```
 
 3. Edit `config.py`.
 
 4. Install dependencies:
 
-```bash
 pip install -r requirements.txt
-```
 
 5. Run manually:
 
-```bash
 python3 send_sms.py
-```
 
 ---
 
 ## Roadmap
 
-The project is evolving from a single CRM integration into a
+The project is evolving from a single CRM integration into a  
 general-purpose local communication bridge.
 
 ### Phase 1 — Stable Core (Current)
@@ -222,6 +234,13 @@ Goal: local-first communication infrastructure.
 - `last_id.txt` stores sync state locally.
 - Only new messages are imported (incremental sync).
 - Snapshot reading prevents database lock issues with Messages.app.
+
+---
+
+## Status
+
+This project is stable for personal and small-team use.  
+APIs and payload format may evolve as the bridge becomes a generic communication event system.
 
 ---
 
