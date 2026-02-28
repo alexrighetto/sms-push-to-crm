@@ -1,5 +1,7 @@
 # iMessage → EspoCRM Bridge
 
+> A local-first bridge that turns iMessage into a CRM data source.
+
 Incremental sync bridge that sends iMessage/SMS conversations
 from macOS Messages.app into EspoCRM via n8n webhook.
 
@@ -11,7 +13,7 @@ A lightweight macOS bridge that reads iMessage/SMS conversations
 from the local Messages database and pushes them into a CRM
 (EspoCRM via n8n webhook) using safe incremental synchronization.
 
-Designed for self-hosted workflows.
+Designed for self-hosted workflows and full data ownership.
 
 ---
 
@@ -36,6 +38,7 @@ EspoCRM Timeline
 - CRM timeline integration
 - Local-first architecture
 - Self-hosted friendly
+- Automatic installer
 
 ---
 
@@ -48,45 +51,9 @@ EspoCRM Timeline
 
 ---
 
-## Setup
+## Quick Install (Recommended)
 
-1. Clone the repository
-
-2. Create your local configuration:
+Run the installer:
 
 ```bash
-cp config.example.py config.py
-```
-
-3. Edit `config.py` and add your webhook URL and paths.
-
-4. Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-5. Run manually:
-
-```bash
-python3 send_sms.py
-```
-
----
-
-## Automation (cron example)
-
-Run every 2 minutes:
-
-```bash
-*/2 * * * * python3 /path/to/send_sms.py
-```
-
----
-
-## Notes
-
-- `config.py` is intentionally ignored by git.
-- `last_id.txt` stores sync state locally and is not versioned.
-- The script only imports **new messages**, preventing duplicates.
-
+bash install.sh
