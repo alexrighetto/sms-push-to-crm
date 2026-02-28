@@ -10,7 +10,10 @@ echo "Creating directory..."
 mkdir -p "$BASE_DIR"
 mkdir -p "$HOME/crm_sync/messages"
 
-command -v git >/dev/null 2>&1 || { echo "Git is required."; exit 1; }
+command -v crontab >/dev/null 2>&1 || {
+    echo "cron is required but not available."
+    exit 1
+}
 
 echo "Cloning repository..."
 if [ ! -d "$BASE_DIR/.git" ]; then
