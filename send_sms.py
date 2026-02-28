@@ -8,10 +8,15 @@ from datetime import datetime
 # CONFIG
 # -----------------------------
 
-LIVE_DB = os.path.expanduser("~/Library/Messages/chat.db")
-SNAPSHOT_DB = os.path.expanduser("~/crm_sync/messages/chat.db")
-WEBHOOK = "https://n8n.srv739556.hstgr.cloud/webhook/sms-ingest"
-STATE_FILE = os.path.expanduser("~/sms_bridge/last_id.txt")
+try:
+    import config
+except ImportError:
+    raise Exception("Missing config.py. Copy config.example.py to config.py")
+
+LIVE_DB = os.path.expanduser(config.LIVE_DB)
+SNAPSHOT_DB = os.path.expanduser(config.SNAPSHOT_DB)
+WEBHOOK = config.WEBHOOK
+STATE_FILE = os.path.expanduser(config.STATE_FILE)
 
 # -----------------------------
 # SNAPSHOT COPY (keeps DB fresh)
