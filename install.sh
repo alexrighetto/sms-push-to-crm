@@ -3,7 +3,7 @@
 echo "Installing iMessage → EspoCRM Bridge"
 
 BASE_DIR="$HOME/sms_bridge"
-REPO_URL="https://github.com/YOUR-USERNAME/sms-push-to-crm.git"
+REPO_URL="https://github.com/alexrighetto/sms-push-to-crm.git"
 
 echo "Creating directory..."
 mkdir -p "$BASE_DIR"
