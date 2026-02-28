@@ -10,6 +10,8 @@ echo "Creating directory..."
 mkdir -p "$BASE_DIR"
 mkdir -p "$HOME/crm_sync/messages"
 
+command -v git >/dev/null 2>&1 || { echo "Git is required."; exit 1; }
+
 echo "Cloning repository..."
 if [ ! -d "$BASE_DIR/.git" ]; then
     git clone "$REPO_URL" "$BASE_DIR"
