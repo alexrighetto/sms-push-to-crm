@@ -7,6 +7,7 @@ REPO_URL="https://github.com/alexrighetto/sms-push-to-crm.git"
 
 echo "Creating directory..."
 mkdir -p "$BASE_DIR"
+mkdir -p "$HOME/crm_sync/messages"
 
 echo "Cloning repository..."
 if [ ! -d "$BASE_DIR/.git" ]; then
