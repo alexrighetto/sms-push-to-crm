@@ -37,11 +37,22 @@ fi
 echo "Creating state file..."
 touch "$BASE_DIR/last_id.txt"
 
+echo "Checking configuration before enabling cron..."
+
+CONFIG_FILE="$BASE_DIR/config.py"
+
+if grep -q "CHANGE_ME" "$CONFIG_FILE"; then
+    echo "config.py is not configured yet."
+    echo "Edit $CONFIG_FILE before cron can be enabled."
+    echo "Installation finished without cron job."
+    exit 0
+fi
+
 CRON_JOB="*/2 * * * * /usr/bin/python3 $BASE_DIR/send_sms.py"
 
 echo "Installing cron job..."
 
 (crontab -l 2>/dev/null | grep -v send_sms.py; echo "$CRON_JOB") | crontab -
 
+echo "Cron job installed."
 echo "Installation complete."
-echo "Edit config.py and you are ready."
