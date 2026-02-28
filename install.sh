@@ -61,3 +61,58 @@ echo "Installing cron job..."
 
 echo "Cron job installed."
 echo "Installation complete."
+
+echo ""
+echo "Running system health check..."
+echo "--------------------------------"
+
+STATUS_OK=true
+
+# Python check
+if command -v python3 >/dev/null 2>&1; then
+    echo "✓ Python available"
+else
+    echo "✗ Python missing"
+    STATUS_OK=false
+fi
+
+# Config check
+if grep -q "CHANGE_ME" "$CONFIG_FILE"; then
+    echo "✗ config.py not configured"
+    STATUS_OK=false
+else
+    echo "✓ Config configured"
+fi
+
+# Messages DB access check
+if [ -r "$HOME/Library/Messages/chat.db" ]; then
+    echo "✓ Messages database accessible"
+else
+    echo "✗ Cannot access Messages database"
+    echo "  → Enable Full Disk Access for Terminal"
+    STATUS_OK=false
+fi
+
+# Cron check
+if crontab -l 2>/dev/null | grep -q send_sms.py; then
+    echo "✓ Cron job installed"
+else
+    echo "✗ Cron job missing"
+    STATUS_OK=false
+fi
+
+# Script check
+if [ -f "$BASE_DIR/send_sms.py" ]; then
+    echo "✓ Bridge script present"
+else
+    echo "✗ send_sms.py missing"
+    STATUS_OK=false
+fi
+
+echo "--------------------------------"
+
+if [ "$STATUS_OK" = true ]; then
+    echo "Bridge is ACTIVE."
+else
+    echo "Bridge installed but requires attention."
+fi
