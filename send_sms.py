@@ -5,13 +5,15 @@ import shutil
 from datetime import datetime
 
 # -----------------------------
-# CONFIG
+# LOAD CONFIG
 # -----------------------------
 
 try:
     import config
 except ImportError:
-    raise Exception("Missing config.py. Copy config.example.py to config.py")
+    raise Exception(
+        "Missing config.py. Copy config.example.py to config.py and edit it."
+    )
 
 LIVE_DB = os.path.expanduser(config.LIVE_DB)
 SNAPSHOT_DB = os.path.expanduser(config.SNAPSHOT_DB)
@@ -19,15 +21,16 @@ WEBHOOK = config.WEBHOOK
 STATE_FILE = os.path.expanduser(config.STATE_FILE)
 
 # -----------------------------
-# SNAPSHOT COPY (keeps DB fresh)
+# SNAPSHOT COPY
 # -----------------------------
 
 def refresh_snapshot():
     try:
+        os.makedirs(os.path.dirname(SNAPSHOT_DB), exist_ok=True)
         shutil.copy2(LIVE_DB, SNAPSHOT_DB)
         print("Snapshot updated:", datetime.now())
     except Exception as e:
-        print("Snapshot copy failed:", e)
+        raise Exception(f"Snapshot copy failed: {e}")
 
 # -----------------------------
 # STATE MANAGEMENT
@@ -40,7 +43,9 @@ def get_last_id():
     except:
         return 0
 
+
 def save_last_id(last_id):
+    os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
     with open(STATE_FILE, "w") as f:
         f.write(str(last_id))
 
@@ -48,53 +53,62 @@ def save_last_id(last_id):
 # MAIN
 # -----------------------------
 
-# refresh DB snapshot first
-refresh_snapshot()
+def main():
 
-# connect to snapshot DB
-conn = sqlite3.connect(SNAPSHOT_DB)
-cur = conn.cursor()
+    refresh_snapshot()
 
-last_id = get_last_id()
+    conn = sqlite3.connect(SNAPSHOT_DB)
+    cur = conn.cursor()
 
-query = """
-SELECT
-    message.ROWID,
-    message.text,
-    message.date,
-    message.is_from_me,
-    handle.id
-FROM message
-LEFT JOIN handle ON message.handle_id = handle.ROWID
-WHERE message.ROWID > ?
-ORDER BY message.ROWID ASC
-"""
+    last_id = get_last_id()
+    print("Last processed ROWID:", last_id)
 
-cur.execute(query, (last_id,))
-rows = cur.fetchall()
+    query = """
+    SELECT
+        message.ROWID,
+        message.text,
+        message.date,
+        message.is_from_me,
+        handle.id
+    FROM message
+    LEFT JOIN handle ON message.handle_id = handle.ROWID
+    WHERE message.ROWID > ?
+    ORDER BY message.ROWID ASC
+    """
 
-max_id = last_id
+    cur.execute(query, (last_id,))
+    rows = cur.fetchall()
 
-for row in rows:
-    rowid, text, date, is_from_me, phone = row
+    max_id = last_id
 
-    payload = {
-        "id": rowid,
-        "phone": phone,
-        "text": text,
-        "from_me": is_from_me,
-        "date": date
-    }
+    for row in rows:
+        rowid, text, date, is_from_me, phone = row
 
-    try:
-        requests.post(WEBHOOK, json=payload, timeout=10)
-        print("Sent:", payload)
-    except Exception as e:
-        print("Error sending:", e)
+        payload = {
+            "id": rowid,
+            "phone": phone,
+            "text": text,
+            "from_me": is_from_me,
+            "date": date
+        }
 
-    if rowid > max_id:
-        max_id = rowid
+        try:
+            response = requests.post(WEBHOOK, json=payload, timeout=10)
+            response.raise_for_status()
+            print("Sent:", payload)
+        except Exception as e:
+            print("Webhook error. Sync stopped:", e)
+            conn.close()
+            return
 
-save_last_id(max_id)
+        if rowid > max_id:
+            max_id = rowid
 
-conn.close()
+    save_last_id(max_id)
+    print("Checkpoint saved:", max_id)
+
+    conn.close()
+
+
+if __name__ == "__main__":
+    main()
