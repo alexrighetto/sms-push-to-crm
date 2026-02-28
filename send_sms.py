@@ -72,8 +72,9 @@ def main():
         handle.id
     FROM message
     LEFT JOIN handle ON message.handle_id = handle.ROWID
-    WHERE message.ROWID > ?
-    ORDER BY message.ROWID ASC
+   WHERE message.ROWID > ?
+   AND message.text IS NOT NULL
+   ORDER BY message.ROWID ASC
     """
 
     cur.execute(query, (last_id,))
