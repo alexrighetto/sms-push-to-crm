@@ -20,6 +20,9 @@ SNAPSHOT_DB = os.path.expanduser(config.SNAPSHOT_DB)
 WEBHOOK = config.WEBHOOK
 STATE_FILE = os.path.expanduser(config.STATE_FILE)
 
+# optional bootstrap window
+BOOTSTRAP_DAYS = getattr(config, "BOOTSTRAP_DAYS", 0)
+
 # -----------------------------
 # SNAPSHOT COPY
 # -----------------------------
@@ -50,6 +53,53 @@ def save_last_id(last_id):
         f.write(str(last_id))
 
 # -----------------------------
+# QUERY BUILDER
+# -----------------------------
+
+def build_query(last_id):
+
+    # FIRST RUN → bootstrap window
+    if last_id == 0 and BOOTSTRAP_DAYS > 0:
+        print(f"Bootstrap mode active ({BOOTSTRAP_DAYS} days)")
+
+        query = f"""
+        SELECT
+            message.ROWID,
+            message.text,
+            message.date,
+            message.is_from_me,
+            handle.id
+        FROM message
+        LEFT JOIN handle ON message.handle_id = handle.ROWID
+        WHERE message.text IS NOT NULL
+        AND datetime(message.date/1000000000 + 978307200, 'unixepoch')
+            >= datetime('now', '-{BOOTSTRAP_DAYS} days')
+        ORDER BY message.ROWID ASC
+        """
+
+        params = ()
+
+    # NORMAL INCREMENTAL MODE
+    else:
+        query = """
+        SELECT
+            message.ROWID,
+            message.text,
+            message.date,
+            message.is_from_me,
+            handle.id
+        FROM message
+        LEFT JOIN handle ON message.handle_id = handle.ROWID
+        WHERE message.ROWID > ?
+        AND message.text IS NOT NULL
+        ORDER BY message.ROWID ASC
+        """
+
+        params = (last_id,)
+
+    return query, params
+
+# -----------------------------
 # MAIN
 # -----------------------------
 
@@ -63,21 +113,9 @@ def main():
     last_id = get_last_id()
     print("Last processed ROWID:", last_id)
 
-    query = """
-    SELECT
-        message.ROWID,
-        message.text,
-        message.date,
-        message.is_from_me,
-        handle.id
-    FROM message
-    LEFT JOIN handle ON message.handle_id = handle.ROWID
-   WHERE message.ROWID > ?
-   AND message.text IS NOT NULL
-   ORDER BY message.ROWID ASC
-    """
+    query, params = build_query(last_id)
 
-    cur.execute(query, (last_id,))
+    cur.execute(query, params)
     rows = cur.fetchall()
 
     max_id = last_id
