@@ -90,8 +90,3 @@ Run every 2 minutes:
 - `last_id.txt` stores sync state locally and is not versioned.
 - The script only imports **new messages**, preventing duplicates.
 
----
-
-## License
-
-MIT (or choose your preferred license)
