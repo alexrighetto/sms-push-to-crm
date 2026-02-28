@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# python
+__pycache__/
+*.pyc
+
+# local state
+last_id.txt
+
+# local configs
+config.py
+
+# databases
+*.db
+*.db-wal
+*.db-shm
+
+# logs
+*.log
