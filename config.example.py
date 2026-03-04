@@ -5,3 +5,4 @@ STATE_FILE = "~/sms_bridge/last_id.txt"
 # Initial bootstrap window (days)
 # Used only when last_id.txt is empty or zero
 BOOTSTRAP_DAYS = 2
+DEVICE_ID = "alex-mac"
