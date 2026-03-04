@@ -20,7 +20,6 @@ SNAPSHOT_DB = os.path.expanduser(config.SNAPSHOT_DB)
 WEBHOOK = config.WEBHOOK
 STATE_FILE = os.path.expanduser(config.STATE_FILE)
 
-# optional bootstrap window
 BOOTSTRAP_DAYS = getattr(config, "BOOTSTRAP_DAYS", 0)
 
 # -----------------------------
@@ -60,27 +59,40 @@ def build_query(last_id):
 
     # FIRST RUN → bootstrap window
     if last_id == 0 and BOOTSTRAP_DAYS > 0:
+
         print(f"Bootstrap mode active ({BOOTSTRAP_DAYS} days)")
 
         query = f"""
         SELECT
-            message.ROWID,
-            message.text,
-            message.date,
-            message.is_from_me,
-            handle.id
-        FROM message
-        LEFT JOIN handle ON message.handle_id = handle.ROWID
-        WHERE message.text IS NOT NULL
-        AND datetime(message.date/1000000000 + 978307200, 'unixepoch')
+            m.ROWID,
+            m.text,
+            m.date,
+            m.is_from_me,
+            h.id AS phone,
+            m.associated_message_type,
+            a.filename
+        FROM message m
+
+        LEFT JOIN handle h
+            ON m.handle_id = h.ROWID
+
+        LEFT JOIN message_attachment_join maj
+            ON maj.message_id = m.ROWID
+
+        LEFT JOIN attachment a
+            ON a.ROWID = maj.attachment_id
+
+        WHERE datetime(m.date/1000000000 + 978307200, 'unixepoch')
             >= datetime('now', '-{BOOTSTRAP_DAYS} days')
-        ORDER BY message.ROWID ASC
+
+        ORDER BY m.ROWID ASC
         """
 
         params = ()
 
     # NORMAL INCREMENTAL MODE
     else:
+
         query = """
         SELECT
             m.ROWID,
@@ -91,16 +103,16 @@ def build_query(last_id):
             m.associated_message_type,
             a.filename
         FROM message m
-        
+
         LEFT JOIN handle h
             ON m.handle_id = h.ROWID
-        
+
         LEFT JOIN message_attachment_join maj
             ON maj.message_id = m.ROWID
-        
+
         LEFT JOIN attachment a
             ON a.ROWID = maj.attachment_id
-        
+
         WHERE m.ROWID > ?
         ORDER BY m.ROWID ASC
         """
@@ -108,6 +120,38 @@ def build_query(last_id):
         params = (last_id,)
 
     return query, params
+
+
+# -----------------------------
+# EVENT TYPE DETECTION
+# -----------------------------
+
+def detect_event(text, filename, associated_type):
+
+    if filename:
+        return "attachment"
+
+    if associated_type and associated_type > 0:
+        return "reaction"
+
+    if text:
+        return "message"
+
+    return "unknown"
+
+
+# -----------------------------
+# APPLE TIME CONVERSION
+# -----------------------------
+
+def apple_time_to_unix(date):
+
+    try:
+        unix = int(date / 1000000000 + 978307200)
+        return unix
+    except:
+        return None
+
 
 # -----------------------------
 # MAIN
@@ -131,21 +175,45 @@ def main():
     max_id = last_id
 
     for row in rows:
-        rowid, text, date, is_from_me, phone = row
+
+        rowid = row[0]
+        text = row[1]
+        date = row[2]
+        is_from_me = row[3]
+        phone = row[4]
+        associated_type = row[5]
+        filename = row[6]
+
+        event_type = detect_event(text, filename, associated_type)
+
+        unix_time = apple_time_to_unix(date)
 
         payload = {
             "id": rowid,
             "phone": phone,
             "text": text,
-            "from_me": is_from_me,
-            "date": date
+            "from_me": bool(is_from_me),
+            "date": date,
+            "timestamp_unix": unix_time,
+            "timestamp_iso": datetime.utcfromtimestamp(unix_time).isoformat() if unix_time else None,
+            "event_type": event_type,
+            "attachment": filename
         }
 
         try:
-            response = requests.post(WEBHOOK, json=payload, timeout=10)
+
+            response = requests.post(
+                WEBHOOK,
+                json=payload,
+                timeout=10
+            )
+
             response.raise_for_status()
+
             print("Sent:", payload)
+
         except Exception as e:
+
             print("Webhook error. Sync stopped:", e)
             conn.close()
             return
@@ -154,6 +222,7 @@ def main():
             max_id = rowid
 
     save_last_id(max_id)
+
     print("Checkpoint saved:", max_id)
 
     conn.close()
