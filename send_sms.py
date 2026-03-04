@@ -27,6 +27,12 @@ RATE_LIMIT_SLEEP = float(getattr(config, "RATE_LIMIT_SLEEP", 0))
 
 DEVICE_ID = getattr(config, "DEVICE_ID", "unknown-device")
 
+ENABLED = getattr(config, "ENABLED", True)
+
+if not ENABLED:
+    print("Sync disabled via config. Exiting.")
+    exit()
+
 
 # -----------------------------
 # SNAPSHOT COPY
