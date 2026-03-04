@@ -235,7 +235,10 @@ def main():
         unix_time = apple_time_to_unix(date_ns)
         iso_time = datetime.utcfromtimestamp(unix_time).isoformat() + "Z" if unix_time else None
 
-        conversation_type = "group" if (chat_identifier or chat_display_name) else "direct"
+        if chat_identifier and chat_identifier != sender_phone:
+            conversation_type = "group"
+        else:
+            conversation_type = "direct"
 
         payload = {
             "id": rowid,
