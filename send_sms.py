@@ -218,8 +218,9 @@ def main():
         service = row[5]
         associated_type = row[6]
         attachments_csv = row[7]
-        chat_identifier = row[8]
-        chat_display_name = row[9]
+        attachment_types = row[8]
+        chat_identifier = row[9]
+        chat_display_name = row[10]
 
         protocol = normalize_protocol(service)
         attachments = split_attachments(attachments_csv)
