@@ -223,7 +223,6 @@ def main():
     max_id = last_id
 
     for row in rows:
-        # Unpack (always 10 columns)
         rowid = row[0]
         text = row[1]
         date_ns = row[2]
@@ -235,7 +234,8 @@ def main():
         attachment_types = row[8]
         chat_identifier = row[9]
         chat_display_name = row[10]
-
+        participant_count = row[11]
+        
         protocol = normalize_protocol(service)
         attachments = split_attachments(attachments_csv)
         event_type = detect_event_type(text, attachments_csv, associated_type)
