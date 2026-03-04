@@ -252,6 +252,7 @@ def main():
             "chat_name": chat_display_name,
 
             "attachments": attachments,     # list of attachment paths
+            "attachment_types": attachment_types,
             "reaction_type": associated_type # numeric tapback type when present
         }
 
