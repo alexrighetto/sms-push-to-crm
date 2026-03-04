@@ -149,10 +149,15 @@ def build_query(last_id):
         h.id                                   AS sender_phone,
         m.service                              AS service,
         m.associated_message_type              AS associated_message_type,
-        GROUP_CONCAT(DISTINCT a.filename) AS attachments_csv,
-        GROUP_CONCAT(DISTINCT a.mime_type) AS attachment_types,
+
+        GROUP_CONCAT(DISTINCT a.filename)      AS attachments_csv,
+        GROUP_CONCAT(DISTINCT a.mime_type)     AS attachment_types,
+
         c.chat_identifier                      AS chat_identifier,
-        c.display_name                         AS chat_display_name
+        c.display_name                         AS chat_display_name,
+
+        COUNT(DISTINCT chj.handle_id)          AS participant_count
+
     FROM message m
 
     LEFT JOIN handle h
@@ -163,6 +168,9 @@ def build_query(last_id):
 
     LEFT JOIN chat c
         ON c.ROWID = cmj.chat_id
+
+    LEFT JOIN chat_handle_join chj
+        ON chj.chat_id = c.ROWID
 
     LEFT JOIN message_attachment_join maj
         ON maj.message_id = m.ROWID
