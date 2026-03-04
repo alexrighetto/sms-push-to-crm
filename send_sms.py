@@ -25,6 +25,8 @@ BOOTSTRAP_DAYS = int(getattr(config, "BOOTSTRAP_DAYS", 0))
 # Optional: throttle between webhook posts (seconds). Ex: 0.2
 RATE_LIMIT_SLEEP = float(getattr(config, "RATE_LIMIT_SLEEP", 0))
 
+DEVICE_ID = getattr(config, "DEVICE_ID", "unknown-device")
+
 
 # -----------------------------
 # SNAPSHOT COPY
@@ -229,6 +231,8 @@ def main():
 
         payload = {
             "id": rowid,
+            "device_id": DEVICE_ID,
+            
             "source": "imessage",
             "event_type": event_type,
 
