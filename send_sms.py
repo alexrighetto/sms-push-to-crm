@@ -33,8 +33,20 @@ RATE_LIMIT_SLEEP = float(getattr(config, "RATE_LIMIT_SLEEP", 0))
 def refresh_snapshot():
     try:
         os.makedirs(os.path.dirname(SNAPSHOT_DB), exist_ok=True)
+
+        # copy main database
         shutil.copy2(LIVE_DB, SNAPSHOT_DB)
+
+        # copy WAL and SHM files if they exist
+        for suffix in ("-wal", "-shm"):
+            src = LIVE_DB + suffix
+            dst = SNAPSHOT_DB + suffix
+
+            if os.path.exists(src):
+                shutil.copy2(src, dst)
+
         print("Snapshot updated:", datetime.now())
+
     except Exception as e:
         raise Exception(f"Snapshot copy failed: {e}")
 
