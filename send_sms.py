@@ -94,8 +94,8 @@ def apple_time_to_unix(date_ns):
 # EVENT TYPE DETECTION
 # -----------------------------
 
-def detect_event_type(text, attachments_csv, associated_type):
-    has_attachments = bool(attachments_csv)
+def detect_event_type(text, attachments_csv, attachment_types, associated_type):
+    has_attachments = bool(attachments_csv) or bool(attachment_types)
     has_reaction = associated_type is not None and int(associated_type) > 0
     has_text = bool(text)
 
@@ -238,12 +238,13 @@ def main():
         
         protocol = normalize_protocol(service)
         attachments = split_attachments(attachments_csv)
-        event_type = detect_event_type(text, attachments_csv, associated_type)
+        
+        event_type = detect_event_type(text, attachments_csv, attachment_types, associated_type)
 
         unix_time = apple_time_to_unix(date_ns)
         iso_time = datetime.utcfromtimestamp(unix_time).isoformat() + "Z" if unix_time else None
 
-        if chat_identifier and chat_identifier != sender_phone:
+        if participant_count and int(participant_count) > 1:
             conversation_type = "group"
         else:
             conversation_type = "direct"
