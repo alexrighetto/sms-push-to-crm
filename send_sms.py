@@ -83,16 +83,26 @@ def build_query(last_id):
     else:
         query = """
         SELECT
-            message.ROWID,
-            message.text,
-            message.date,
-            message.is_from_me,
-            handle.id
-        FROM message
-        LEFT JOIN handle ON message.handle_id = handle.ROWID
-        WHERE message.ROWID > ?
-        AND message.text IS NOT NULL
-        ORDER BY message.ROWID ASC
+            m.ROWID,
+            m.text,
+            m.date,
+            m.is_from_me,
+            h.id AS phone,
+            m.associated_message_type,
+            a.filename
+        FROM message m
+        
+        LEFT JOIN handle h
+            ON m.handle_id = h.ROWID
+        
+        LEFT JOIN message_attachment_join maj
+            ON maj.message_id = m.ROWID
+        
+        LEFT JOIN attachment a
+            ON a.ROWID = maj.attachment_id
+        
+        WHERE m.ROWID > ?
+        ORDER BY m.ROWID ASC
         """
 
         params = (last_id,)
