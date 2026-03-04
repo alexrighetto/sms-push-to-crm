@@ -90,7 +90,7 @@ def apple_time_to_unix(date_ns):
 
 def detect_event_type(text, attachments_csv, associated_type):
     has_attachments = bool(attachments_csv)
-    has_reaction = bool(associated_type) and int(associated_type) > 0
+    has_reaction = associated_type is not None and int(associated_type) > 0
     has_text = bool(text)
 
     if has_attachments:
