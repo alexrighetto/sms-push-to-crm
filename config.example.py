@@ -6,3 +6,4 @@ STATE_FILE = "~/sms_bridge/last_id.txt"
 # Used only when last_id.txt is empty or zero
 BOOTSTRAP_DAYS = 2
 DEVICE_ID = "alex-mac"
+ENABLED = True
