@@ -1,0 +1,659 @@
+{
+  "name": "CRM sms-import",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sms-ingest",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -608,
+        80
+      ],
+      "id": "51f8f37c-50aa-4a2d-b32e-7bc42946cade",
+      "name": "Webhook",
+      "webhookId": "6a710bce-2648-4102-9263-ba4d9ba3b215"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.from_me }}",
+                    "rightValue": false,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    },
+                    "id": "1f0921f5-6154-4869-a377-1a2579a67f5e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Message Sent"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "4f78884f-e36e-4d41-8f52-42b97efaa8dc",
+                    "leftValue": "={{ $json.from_me }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "false",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Message Received"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1536,
+        32
+      ],
+      "id": "074b4685-3328-4051-bcfd-05616dedac02",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fc2afbb4-c71a-41a4-a547-ec4ac5890456",
+              "leftValue": "={{ $json.body.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -288,
+        112
+      ],
+      "id": "62d45799-d769-4690-8ffb-593116f6d415",
+      "name": "If empty"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        304
+      ],
+      "id": "cc8e0dfc-e1a7-4729-afed-e48fc316aa8f",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "url": "=https://crm.alexrighetto.com/api/v1/User",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        288,
+        0
+      ],
+      "id": "9001ab94-46af-4286-a03d-642b8a384f73",
+      "name": "get the CRM users",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "s8h3kclNsvNqDUZ1",
+          "name": "Espo CRM Stacy Francis"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9bf0d00e-842e-4192-8102-5811b1f9d6ea",
+              "leftValue": "={{\n!$node[\"Filter to get their number\"].json.internalPhones.includes(\n  ($json.phone || \"\").replace(/\\D/g,'')\n)\n}}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        768,
+        0
+      ],
+      "id": "6785c775-c312-487c-8ccd-3ed2bd4181df",
+      "name": "If not part of the team"
+    },
+    {
+      "parameters": {
+        "jsCode": "const users = $json.list || [];\n\nconst normalize = (p) =>\n  p ? p.replace(/\\D/g, '') : null;\n\nconst internalPhones = users\n  // rimuove software/API users\n  .filter(u => u.type !== \"api\")\n\n  // prende solo utenti attivi\n  .filter(u => u.isActive === true)\n\n  // prende solo chi ha telefono\n  .map(u => normalize(u.phoneNumber))\n  .filter(Boolean);\n\nreturn [{\n  internalPhones\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        0
+      ],
+      "id": "9d358de7-bc25-497a-b8aa-581c6c807929",
+      "name": "Filter to get their number"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        896,
+        288
+      ],
+      "id": "c20a1729-46f8-4df5-82c6-8493291cfa63",
+      "name": "disregard messages"
+    },
+    {
+      "parameters": {
+        "content": "## receive the message from MacOs\ndiscard if the message is emply\nin the next future, handle what tipy of message",
+        "height": 784,
+        "width": 896
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -704,
+        -112
+      ],
+      "typeVersion": 1,
+      "id": "8c9d440c-87b4-4eed-bf3f-6306ba7a9051",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Find out id the message is coming from or to a team member\n**Discard if true",
+        "height": 784,
+        "width": 896,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        208,
+        -112
+      ],
+      "typeVersion": 1,
+      "id": "34baf5b7-e979-4d68-91c6-5fd7b005bd26",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c6e55558-c746-4678-8a19-800f2a89e8a9",
+              "name": "phone",
+              "value": "={{ $('Webhook').item.json.body.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "0ffcfbd0-f3ec-4f3e-893d-be2be4d83da3",
+              "name": "text",
+              "value": "={{ $('Webhook').item.json.body.text }}",
+              "type": "string"
+            },
+            {
+              "id": "64c65b81-a474-4f22-8198-11da740554f6",
+              "name": "timestamp_unix",
+              "value": "={{ Math.floor(( $('Webhook').item.json.body.date/ 1000000000) + 978307200) }}",
+              "type": "number"
+            },
+            {
+              "id": "bae4d6c1-bfcf-4757-a8e2-c3d257f768b7",
+              "name": "from_me",
+              "value": "={{ $('Webhook').item.json.body.from_me  }}",
+              "type": "boolean"
+            },
+            {
+              "id": "bd1aed55-d3ed-49a6-9577-de72fae1df3a",
+              "name": "id",
+              "value": "={{ $('Webhook').item.json.body.id }}",
+              "type": "number"
+            },
+            {
+              "id": "9d1ef76b-406d-41b1-8e18-96f1a44710fd",
+              "name": "timestamp_iso",
+              "value": "={{ new Date((($('Webhook').item.json.body.date/ 1000000000) + 978307200) * 1000).toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "534d7623-a61f-4eaf-8d34-2ea686881331",
+              "name": "timestamp_local",
+              "value": "={{ new Date((( $('Webhook').item.json.body.date/ 1000000000) + 978307200) * 1000).toLocaleString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1360,
+        48
+      ],
+      "id": "e341967d-788c-416b-830e-8dcdab423b97",
+      "name": "Organize fields"
+    },
+    {
+      "parameters": {
+        "content": "## Sent of Received?\n**if the message is sent or receinved",
+        "height": 800,
+        "width": 896
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1120,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "d3b68570-383c-4b4d-bfad-e664ced9f124",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "url": "=https://crm.alexrighetto.com/api/v1/Contact?where[0][type]=contains&where[0][attribute]=phoneNumber&where[0][value]={{$json.phone.slice(-10)}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2144,
+        64
+      ],
+      "id": "faff9ff7-f5ef-48c1-8409-4c5235b2d8d8",
+      "name": "identify the user",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "s8h3kclNsvNqDUZ1",
+          "name": "Espo CRM Stacy Francis"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Message Received\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
+        "height": 784,
+        "width": 864,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2032,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "6c6a766a-484d-42bd-95da-25c77fe19fa0",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a34169c7-1434-42b8-a4c9-16cd4504cffe",
+              "leftValue": "={{ $json.total }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2432,
+        64
+      ],
+      "id": "a5ea90a4-5312-4e86-b6ba-ae20ac206b6a",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2608,
+        368
+      ],
+      "id": "12a6149e-5948-430c-b6ee-2eea8a0bd47d",
+      "name": "User not Found"
+    },
+    {
+      "parameters": {
+        "content": "## User Found\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
+        "height": 784,
+        "width": 608
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2896,
+        -128
+      ],
+      "typeVersion": 1,
+      "id": "7d4d69cf-c3a0-4039-b2fe-d8a4732802c1",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://crm.alexrighetto.com/api/v1/Note",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "type",
+              "value": "Post"
+            },
+            {
+              "name": "parentType",
+              "value": "Contact"
+            },
+            {
+              "name": "parentId",
+              "value": "={{$node[\"identify the user\"].json.list[0].id}}"
+            },
+            {
+              "name": "post",
+              "value": "={{$node[\"Webhook\"].json.body.from_me\n  ? \"SMS sent by Stacy:\\n\"\n  : \"SMS received from \" + $node[\"identify the user\"].json.list[0].name + \":\\n\"\n}}\n{{$node[\"Webhook\"].json.body.text}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3104,
+        208
+      ],
+      "id": "ace9b7e7-f388-47d4-aa2a-a9a23553364e",
+      "name": "Update Contacts Feed",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "s8h3kclNsvNqDUZ1",
+          "name": "Espo CRM Stacy Francis"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "n8n.srv739556.hstgr.cloud",
+            "user-agent": "python-requests/2.31.0",
+            "content-length": "94",
+            "accept": "*/*",
+            "accept-encoding": "gzip, deflate",
+            "content-type": "application/json",
+            "x-forwarded-for": "172.18.0.1",
+            "x-forwarded-host": "n8n.srv739556.hstgr.cloud",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https",
+            "x-forwarded-server": "8fd125281d11",
+            "x-real-ip": "172.18.0.1"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "id": 865,
+            "phone": "+17274539866",
+            "text": "okay",
+            "from_me": 0,
+            "date": 762828751696802600
+          },
+          "webhookUrl": "https://n8n.srv739556.hstgr.cloud/webhook/sms-ingest",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [],
+        [
+          {
+            "node": "identify the user",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If empty": {
+      "main": [
+        [
+          {
+            "node": "get the CRM users",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get the CRM users": {
+      "main": [
+        [
+          {
+            "node": "Filter to get their number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If not part of the team": {
+      "main": [
+        [
+          {
+            "node": "Organize fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "disregard messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter to get their number": {
+      "main": [
+        [
+          {
+            "node": "If not part of the team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Organize fields": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "identify the user": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Update Contacts Feed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "User not Found",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "User not Found": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "beaa2e32-eec0-4d2b-af5c-f004ae9ad1c7",
+  "meta": {
+    "instanceId": "1d674c672ff44588c21271e869eec7967714805f7e5fc5a222edee8ccdb0beab"
+  },
+  "id": "8eCvDz6GnLnGthl8",
+  "tags": [
+    {
+      "updatedAt": "2025-03-01T14:57:53.200Z",
+      "createdAt": "2025-03-01T14:57:53.200Z",
+      "id": "Npf05uWBQJGoH858",
+      "name": "CRM"
+    },
+    {
+      "updatedAt": "2026-01-28T15:25:44.839Z",
+      "createdAt": "2026-01-28T15:25:44.839Z",
+      "id": "aIJgxXkKyDVURSYG",
+      "name": "Webhooks"
+    },
+    {
+      "name": "SMS",
+      "id": "qZI5HqHLfydkiRup",
+      "updatedAt": "2026-02-28T01:58:09.293Z",
+      "createdAt": "2026-02-28T01:58:09.293Z"
+    },
+    {
+      "name": "Stacy",
+      "id": "yRITpOFG7EXNQoce",
+      "updatedAt": "2026-02-28T01:58:12.004Z",
+      "createdAt": "2026-02-28T01:58:12.004Z"
+    }
+  ]
+}
