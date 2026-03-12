@@ -128,7 +128,7 @@ def parse_attributed_body(blob):
             msg = re.split(r'__kIMMessagePartAttributeName', msg)[0].strip()
 
             # remove leftover serialization tokens
-            msg = re.sub(r'\b[iIkK@]\b', '', msg)
+            msg = re.sub(r'\b[iIkK@]+\b', '', msg)
             
             # remove leading @
             msg = msg.lstrip("@")
