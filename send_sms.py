@@ -1,8 +1,11 @@
+import re
 import sqlite3
 import requests
 import os
 import shutil
+import time
 from datetime import datetime
+
 
 
 # -----------------------------
@@ -85,7 +88,7 @@ def apple_time_to_unix(date_ns):
 # ATTRIBUTED BODY PARSER
 # -----------------------------
 
-import re
+
 
 def parse_attributed_body(blob):
 
@@ -93,7 +96,6 @@ def parse_attributed_body(blob):
         return None
 
     try:
-
         # decode ignoring binary garbage
         text = blob.decode("utf-8", errors="ignore")
 
@@ -115,8 +117,8 @@ def parse_attributed_body(blob):
 
         text = text.strip()
 
-        # extract actual message after "+"
-        match = re.search(r'\+(.+)', text)
+        # extract message after the "+" marker used by iMessage serialization
+        match = re.search(r'\+\s*([^\n]+)', text)
 
         if match:
             msg = match.group(1).strip()
@@ -126,12 +128,11 @@ def parse_attributed_body(blob):
 
             return msg
 
-        return text
+        # fallback if "+" not found
+        return text if text else None
 
     except Exception as e:
-
         print("Attributed parse error:", e)
-
         return None
     
 # -----------------------------
@@ -140,11 +141,14 @@ def parse_attributed_body(blob):
 
 def detect_event_type(text, attachments, reaction_type):
 
-    if attachments:
-        return "attachment"
-
     if reaction_type and int(reaction_type) > 0:
         return "reaction"
+
+    if attachments and text:
+        return "message_with_attachment"
+
+    if attachments:
+        return "attachment"
 
     if text:
         return "message"
@@ -306,11 +310,11 @@ def main():
         chat_display_name = row[11]
         participant_count = row[12]
         
-      # -----------------------------
-        # TEXT RESOLUTION
-        # -----------------------------
-        
-        if text is None or "NSAttributedString" in str(text):
+    # -----------------------------
+    # TEXT RESOLUTION
+    # -----------------------------
+
+        if not text or "NSAttributedString" in str(text):
         
             if attributed:
         
@@ -327,17 +331,21 @@ def main():
                 print("Message without text and without attributedBody:", rowid)
         
         if text:
-            text = text.strip()
+              text = re.sub(r'\s+', ' ', text).strip()
+            
+            protocol = normalize_protocol(service)
+    
+            attachments = split_attachments(attachments_csv)
+            attachment_types_list = split_attachments(attachment_types)
+    
+            event_type = detect_event_type(text, attachments, reaction_type)
+    
+            unix_time = apple_time_to_unix(date_ns)
 
-        protocol = normalize_protocol(service)
-
-        attachments = split_attachments(attachments_csv)
-
-        event_type = detect_event_type(text, attachments, reaction_type)
-
-        unix_time = apple_time_to_unix(date_ns)
-
-        iso_time = datetime.utcfromtimestamp(unix_time).isoformat() + "Z" if unix_time else None
+        if unix_time:
+            iso_time = datetime.utcfromtimestamp(unix_time).isoformat() + "Z"
+        else:
+            iso_time = None
 
         if participant_count and int(participant_count) > 1:
             conversation_type = "group"
@@ -355,7 +363,7 @@ def main():
             "from_me": is_from_me,
             "phone": sender_phone,
 
-            "text": text,
+           "text": text or "",
 
             "date": date_ns,
             "timestamp_unix": unix_time,
@@ -368,7 +376,7 @@ def main():
             "chat_name": chat_display_name,
 
             "attachments": attachments,
-            "attachment_types": attachment_types,
+            "attachment_types": attachment_types_list,
 
             "reaction_type": reaction_type
         }
@@ -379,7 +387,10 @@ def main():
 
             r.raise_for_status()
 
-            print("Sent:", rowid, event_type)
+           print(f"Sent {rowid} | {event_type} | {sender_phone}")
+            
+            if RATE_LIMIT_SLEEP > 0:
+                time.sleep(RATE_LIMIT_SLEEP)
 
         except Exception as e:
 
