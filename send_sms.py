@@ -125,7 +125,9 @@ def parse_attributed_body(blob):
 
             # remove markers like % or #
             msg = re.sub(r'^[#%]', '', msg)
-
+            
+            msg = re.split(r'__kIMMessagePartAttributeName', msg)[0].strip()
+            
             return msg
 
         # fallback if "+" not found
