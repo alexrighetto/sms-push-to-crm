@@ -19,14 +19,9 @@ SNAPSHOT_DB = os.path.expanduser(config.SNAPSHOT_DB)
 WEBHOOK = config.WEBHOOK
 STATE_FILE = os.path.expanduser(config.STATE_FILE)
 
-# Optional: first-run bootstrap window (days). If 0 -> no bootstrap.
 BOOTSTRAP_DAYS = int(getattr(config, "BOOTSTRAP_DAYS", 0))
-
-# Optional: throttle between webhook posts (seconds). Ex: 0.2
 RATE_LIMIT_SLEEP = float(getattr(config, "RATE_LIMIT_SLEEP", 0))
-
 DEVICE_ID = getattr(config, "DEVICE_ID", "unknown-device")
-
 ENABLED = getattr(config, "ENABLED", True)
 
 if not ENABLED:
@@ -39,24 +34,19 @@ if not ENABLED:
 # -----------------------------
 
 def refresh_snapshot():
-    try:
-        os.makedirs(os.path.dirname(SNAPSHOT_DB), exist_ok=True)
 
-        # copy main database
-        shutil.copy2(LIVE_DB, SNAPSHOT_DB)
+    os.makedirs(os.path.dirname(SNAPSHOT_DB), exist_ok=True)
 
-        # copy WAL and SHM files if they exist
-        for suffix in ("-wal", "-shm"):
-            src = LIVE_DB + suffix
-            dst = SNAPSHOT_DB + suffix
+    shutil.copy2(LIVE_DB, SNAPSHOT_DB)
 
-            if os.path.exists(src):
-                shutil.copy2(src, dst)
+    for suffix in ("-wal", "-shm"):
+        src = LIVE_DB + suffix
+        dst = SNAPSHOT_DB + suffix
 
-        print("Snapshot updated:", datetime.now())
+        if os.path.exists(src):
+            shutil.copy2(src, dst)
 
-    except Exception as e:
-        raise Exception(f"Snapshot copy failed: {e}")
+    print("Snapshot updated:", datetime.now())
 
 
 # -----------------------------
@@ -72,7 +62,9 @@ def get_last_id():
 
 
 def save_last_id(last_id):
+
     os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+
     with open(STATE_FILE, "w") as f:
         f.write(str(last_id))
 
@@ -80,12 +72,33 @@ def save_last_id(last_id):
 # -----------------------------
 # APPLE TIME CONVERSION
 # -----------------------------
-# Apple Messages stores time as nanoseconds since 2001-01-01 00:00:00 UTC.
-# Unix epoch starts at 1970-01-01. The offset is 978307200 seconds.
 
 def apple_time_to_unix(date_ns):
+
     try:
         return int(date_ns / 1_000_000_000 + 978307200)
+    except:
+        return None
+
+
+# -----------------------------
+# ATTRIBUTED BODY PARSER
+# -----------------------------
+
+def parse_attributed_body(blob):
+
+    if not blob:
+        return None
+
+    try:
+        text = blob.decode("utf-8", errors="ignore")
+        text = text.strip()
+
+        if len(text) == 0:
+            return None
+
+        return text
+
     except:
         return None
 
@@ -94,49 +107,58 @@ def apple_time_to_unix(date_ns):
 # EVENT TYPE DETECTION
 # -----------------------------
 
-def detect_event_type(text, attachments_csv, attachment_types, associated_type):
-    has_attachments = bool(attachments_csv) or bool(attachment_types)
-    has_reaction = associated_type is not None and int(associated_type) > 0
-    has_text = bool(text)
+def detect_event_type(text, attachments, reaction_type):
 
-    if has_attachments:
+    if attachments:
         return "attachment"
-    if has_reaction:
+
+    if reaction_type and int(reaction_type) > 0:
         return "reaction"
-    if has_text:
+
+    if text:
         return "message"
+
     return "unknown"
 
 
 def normalize_protocol(service):
+
     if not service:
         return "unknown"
+
     s = str(service).strip().lower()
+
     if s == "sms":
         return "sms"
+
     if s == "imessage":
         return "imessage"
+
     return s
 
 
 def split_attachments(attachments_csv):
+
     if not attachments_csv:
         return []
+
     parts = [p.strip() for p in str(attachments_csv).split(",") if p.strip()]
-    # de-dup while preserving order
+
     seen = set()
     out = []
+
     for p in parts:
+
         if p not in seen:
             out.append(p)
             seen.add(p)
+
     return out
 
 
 # -----------------------------
 # QUERY BUILDER
 # -----------------------------
-# We GROUP BY message ROWID to avoid duplicates from joins (attachments/chat joins).
 
 def build_query(last_id):
 
@@ -144,6 +166,7 @@ def build_query(last_id):
     SELECT
         m.ROWID                                AS message_rowid,
         m.text                                 AS text,
+        m.attributedBody                       AS attributedBody,
         m.date                                 AS date_ns,
         m.is_from_me                           AS is_from_me,
         h.id                                   AS sender_phone,
@@ -180,6 +203,7 @@ def build_query(last_id):
     """
 
     if last_id == 0 and BOOTSTRAP_DAYS > 0:
+
         print(f"Bootstrap mode active ({BOOTSTRAP_DAYS} days)")
 
         query = f"""
@@ -189,15 +213,18 @@ def build_query(last_id):
         GROUP BY m.ROWID
         ORDER BY m.ROWID ASC
         """
+
         params = ()
 
     else:
+
         query = f"""
         {base_select}
         WHERE m.ROWID > ?
         GROUP BY m.ROWID
         ORDER BY m.ROWID ASC
         """
+
         params = (last_id,)
 
     return query, params
@@ -208,40 +235,63 @@ def build_query(last_id):
 # -----------------------------
 
 def main():
+
     refresh_snapshot()
 
     conn = sqlite3.connect(SNAPSHOT_DB)
     cur = conn.cursor()
 
     last_id = get_last_id()
+
     print("Last processed ROWID:", last_id)
 
     query, params = build_query(last_id)
+
     cur.execute(query, params)
+
     rows = cur.fetchall()
 
     max_id = last_id
 
     for row in rows:
+
         rowid = row[0]
         text = row[1]
-        date_ns = row[2]
-        is_from_me = bool(row[3])
-        sender_phone = row[4]
-        service = row[5]
-        associated_type = row[6]
-        attachments_csv = row[7]
-        attachment_types = row[8]
-        chat_identifier = row[9]
-        chat_display_name = row[10]
-        participant_count = row[11]
-        
+        attributed = row[2]
+        date_ns = row[3]
+        is_from_me = bool(row[4])
+        sender_phone = row[5]
+        service = row[6]
+        reaction_type = row[7]
+        attachments_csv = row[8]
+        attachment_types = row[9]
+        chat_identifier = row[10]
+        chat_display_name = row[11]
+        participant_count = row[12]
+
+        # -----------------------------
+        # TEXT RESOLUTION
+        # -----------------------------
+
+        if text is None:
+
+            parsed = parse_attributed_body(attributed)
+
+            if parsed:
+                text = parsed
+                print("Recovered text from attributedBody:", rowid)
+
+            else:
+                print("Message with NULL text:", rowid)
+
         protocol = normalize_protocol(service)
+
         attachments = split_attachments(attachments_csv)
-        
-        event_type = detect_event_type(text, attachments_csv, attachment_types, associated_type)
+
+        event_type = detect_event_type(text, attachments, reaction_type)
 
         unix_time = apple_time_to_unix(date_ns)
+
         iso_time = datetime.utcfromtimestamp(unix_time).isoformat() + "Z" if unix_time else None
 
         if participant_count and int(participant_count) > 1:
@@ -250,51 +300,55 @@ def main():
             conversation_type = "direct"
 
         payload = {
+
             "id": rowid,
             "device_id": DEVICE_ID,
-            
+
             "source": "imessage",
             "event_type": event_type,
 
             "from_me": is_from_me,
-            "phone": sender_phone,          # sender (handle.id) when available
+            "phone": sender_phone,
+
             "text": text,
 
-            "date": date_ns,                # raw Apple date (ns since 2001)
+            "date": date_ns,
             "timestamp_unix": unix_time,
             "timestamp_iso": iso_time,
 
-            "protocol": protocol,           # sms / imessage / unknown
+            "protocol": protocol,
 
             "conversation_type": conversation_type,
             "chat_id": chat_identifier,
             "chat_name": chat_display_name,
 
-            "attachments": attachments,     # list of attachment paths
+            "attachments": attachments,
             "attachment_types": attachment_types,
-            "reaction_type": associated_type # numeric tapback type when present
+
+            "reaction_type": reaction_type
         }
 
         try:
-            response = requests.post(WEBHOOK, json=payload, timeout=10)
-            response.raise_for_status()
-            print("Sent:", rowid, event_type, protocol, conversation_type)
+
+            r = requests.post(WEBHOOK, json=payload, timeout=10)
+
+            r.raise_for_status()
+
+            print("Sent:", rowid, event_type)
+
         except Exception as e:
+
             print("Webhook error. Sync stopped:", e)
+
             conn.close()
+
             return
 
         if rowid > max_id:
             max_id = rowid
 
-        if RATE_LIMIT_SLEEP > 0:
-            try:
-                import time
-                time.sleep(RATE_LIMIT_SLEEP)
-            except:
-                pass
-
     save_last_id(max_id)
+
     print("Checkpoint saved:", max_id)
 
     conn.close()
