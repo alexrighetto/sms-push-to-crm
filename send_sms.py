@@ -106,10 +106,12 @@ def parse_attributed_body(blob):
 
         # join text fragments
         msg = " ".join(parts)
-
+        
+        msg = msg.replace("￼", "")
+        
         # remove control characters
         msg = re.sub(r'[\x00-\x1F\x7F]', ' ', msg)
-
+        
         # normalize whitespace
         msg = re.sub(r'\s+', ' ', msg).strip()
 
