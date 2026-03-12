@@ -33,6 +33,17 @@ fi
 echo "Installing dependencies..."
 python3 -m pip install --user -r "$BASE_DIR/requirements.txt"
 
+echo "Verifying parser dependency..."
+
+python3 - <<EOF
+try:
+    import nska_deserialize
+    print("✓ nska-deserialize installed")
+except ImportError:
+    print("✗ nska-deserialize missing")
+    exit(1)
+EOF
+
 echo "Creating config.py if missing..."
 if [ ! -f "$BASE_DIR/config.py" ]; then
     cp "$BASE_DIR/config.example.py" "$BASE_DIR/config.py"
