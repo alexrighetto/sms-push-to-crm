@@ -239,6 +239,12 @@ def main():
     refresh_snapshot()
 
     conn = sqlite3.connect(SNAPSHOT_DB)
+
+    # read WAL properly (important for iMessage DB)
+    conn.execute("PRAGMA journal_mode=WAL;")
+    conn.execute("PRAGMA read_uncommitted = true;")
+    conn.execute("PRAGMA temp_store = MEMORY;")
+
     cur = conn.cursor()
 
     last_id = get_last_id()
