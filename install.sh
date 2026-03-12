@@ -64,7 +64,7 @@ if grep -q "CHANGE_ME" "$CONFIG_FILE"; then
     exit 0
 fi
 
-CRON_JOB="*/2 * * * * /usr/bin/python3 $BASE_DIR/send_sms.py"
+CRON_JOB="*/2 * * * * $(which python3) $BASE_DIR/send_sms.py"
 
 echo "Installing cron job..."
 
