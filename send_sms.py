@@ -94,9 +94,11 @@ def parse_attributed_body(blob):
 
     try:
 
-        data = deserialize_plist(blob)
+        # remove null bytes that break plist parser
+        clean_blob = blob.replace(b'\x00', b'')
 
-        # NSAttributedString often becomes a dict/list structure
+        data = deserialize_plist(clean_blob)
+
         if isinstance(data, dict):
             for v in data.values():
                 if isinstance(v, str):
