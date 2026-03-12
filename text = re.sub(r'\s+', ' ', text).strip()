@@ -310,9 +310,9 @@ def main():
         chat_display_name = row[11]
         participant_count = row[12]
         
-    # -----------------------------
-    # TEXT RESOLUTION
-    # -----------------------------
+        # -----------------------------
+        # TEXT RESOLUTION
+        # -----------------------------
 
         if not text or "NSAttributedString" in str(text):
         
@@ -386,7 +386,7 @@ def main():
 
             r.raise_for_status()
 
-           print(f"Sent {rowid} | {event_type} | {sender_phone}")
+            print(f"Sent {rowid} | {event_type} | {sender_phone}")
             
             if RATE_LIMIT_SLEEP > 0:
                 time.sleep(RATE_LIMIT_SLEEP)
