@@ -331,17 +331,16 @@ def main():
                 print("Message without text and without attributedBody:", rowid)
         
         if text:
-              text = re.sub(r'\s+', ' ', text).strip()
-            
-            protocol = normalize_protocol(service)
-    
-            attachments = split_attachments(attachments_csv)
-            attachment_types_list = split_attachments(attachment_types)
-    
-            event_type = detect_event_type(text, attachments, reaction_type)
-    
-            unix_time = apple_time_to_unix(date_ns)
-
+            text = re.sub(r'\s+', ' ', text).strip()
+        
+        protocol = normalize_protocol(service)
+        
+        attachments = split_attachments(attachments_csv)
+        attachment_types_list = split_attachments(attachment_types)
+        
+        event_type = detect_event_type(text, attachments, reaction_type)
+        
+        unix_time = apple_time_to_unix(date_ns)
         if unix_time:
             iso_time = datetime.utcfromtimestamp(unix_time).isoformat() + "Z"
         else:
