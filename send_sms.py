@@ -94,26 +94,45 @@ def parse_attributed_body(blob):
 
     try:
 
+        # decode ignoring binary garbage
         text = blob.decode("utf-8", errors="ignore")
 
         # remove null bytes
         text = text.replace("\x00", "")
 
-        # look for NSString marker
-        match = re.search(r'\+([^\x86]+)', text)
+        # remove Apple framework names
+        text = re.sub(
+            r'(NSAttributedString|NSObject|NSString|NSDictionary|NSNumber|NSValue|streamtyped)',
+            '',
+            text
+        )
+
+        # remove control characters
+        text = re.sub(r'[\x00-\x1F\x7F]', ' ', text)
+
+        # collapse whitespace
+        text = re.sub(r'\s+', ' ', text)
+
+        text = text.strip()
+
+        # extract actual message after "+"
+        match = re.search(r'\+(.+)', text)
 
         if match:
-            message = match.group(1).strip()
+            msg = match.group(1).strip()
 
-            # remove leading markers like % or #
-            message = re.sub(r'^[#%]', '', message)
+            # remove markers like % or #
+            msg = re.sub(r'^[#%]', '', msg)
 
-            return message
+            return msg
+
+        return text
 
     except Exception as e:
+
         print("Attributed parse error:", e)
 
-    return None
+        return None
     
 # -----------------------------
 # EVENT TYPE DETECTION
