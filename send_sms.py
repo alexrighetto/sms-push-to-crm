@@ -127,10 +127,13 @@ def parse_attributed_body(blob):
             # remove Apple attributed string tail
             msg = re.split(r'__kIMMessagePartAttributeName', msg)[0].strip()
 
-            # remove leftover single-letter tokens (i, k)
-            msg = re.sub(r'\b[ik]\b', '', msg)
-
-            # normalize spaces again
+            # remove leftover serialization tokens
+            msg = re.sub(r'\b[iIkK@]\b', '', msg)
+            
+            # remove leading @
+            msg = msg.lstrip("@")
+            
+            # normalize spaces
             msg = re.sub(r'\s+', ' ', msg).strip()
 
             return msg if msg else None
