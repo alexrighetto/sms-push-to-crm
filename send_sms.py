@@ -114,7 +114,7 @@ def parse_attributed_body(blob):
         print("Attributed parse error:", e)
 
     return None
-
+    
 # -----------------------------
 # EVENT TYPE DETECTION
 # -----------------------------
