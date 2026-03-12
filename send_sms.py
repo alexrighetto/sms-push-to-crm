@@ -96,50 +96,24 @@ def parse_attributed_body(blob):
         return None
 
     try:
-        # decode ignoring binary garbage
-        text = blob.decode("utf-8", errors="ignore")
+        data = blob.decode("utf-8", errors="ignore")
 
-        # remove null bytes
-        text = text.replace("\x00", "")
+        # find all NSString blocks
+        parts = re.findall(r'NSString[^"]*"([^"]+)"', data)
 
-        # remove Apple framework names
-        text = re.sub(
-            r'(NSAttributedString|NSObject|NSString|NSDictionary|NSNumber|NSValue|streamtyped)',
-            '',
-            text
-        )
+        if not parts:
+            return None
+
+        # join text fragments
+        msg = " ".join(parts)
 
         # remove control characters
-        text = re.sub(r'[\x00-\x1F\x7F]', ' ', text)
+        msg = re.sub(r'[\x00-\x1F\x7F]', ' ', msg)
 
-        # collapse whitespace
-        text = re.sub(r'\s+', ' ', text).strip()
+        # normalize whitespace
+        msg = re.sub(r'\s+', ' ', msg).strip()
 
-        # extract message after "+" marker used by iMessage serialization
-        match = re.search(r'\+\s*([^\n]+)', text)
-
-        if match:
-            msg = match.group(1).strip()
-
-            # remove markers like % or #
-            msg = re.sub(r'^[#%]', '', msg)
-
-            # remove Apple attributed string tail
-            msg = re.split(r'__kIMMessagePartAttributeName', msg)[0].strip()
-
-            # remove leftover serialization tokens
-            msg = re.sub(r'\b[iIkK@]+\b', '', msg)
-            
-            # remove leading @
-            msg = msg.lstrip("@")
-            
-            # normalize spaces
-            msg = re.sub(r'\s+', ' ', msg).strip()
-
-            return msg if msg else None
-
-        # fallback if "+" not found
-        return text if text else None
+        return msg if msg else None
 
     except Exception as e:
         print("Attributed parse error:", e)
