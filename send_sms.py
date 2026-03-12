@@ -113,11 +113,9 @@ def parse_attributed_body(blob):
         text = re.sub(r'[\x00-\x1F\x7F]', ' ', text)
 
         # collapse whitespace
-        text = re.sub(r'\s+', ' ', text)
+        text = re.sub(r'\s+', ' ', text).strip()
 
-        text = text.strip()
-
-        # extract message after the "+" marker used by iMessage serialization
+        # extract message after "+" marker used by iMessage serialization
         match = re.search(r'\+\s*([^\n]+)', text)
 
         if match:
@@ -125,10 +123,17 @@ def parse_attributed_body(blob):
 
             # remove markers like % or #
             msg = re.sub(r'^[#%]', '', msg)
-            
+
+            # remove Apple attributed string tail
             msg = re.split(r'__kIMMessagePartAttributeName', msg)[0].strip()
-            
-            return msg
+
+            # remove leftover single-letter tokens (i, k)
+            msg = re.sub(r'\b[ik]\b', '', msg)
+
+            # normalize spaces again
+            msg = re.sub(r'\s+', ' ', msg).strip()
+
+            return msg if msg else None
 
         # fallback if "+" not found
         return text if text else None
