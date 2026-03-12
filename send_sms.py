@@ -85,7 +85,7 @@ def apple_time_to_unix(date_ns):
 # ATTRIBUTED BODY PARSER
 # -----------------------------
 
-from nska_deserialize import deserialize_plist
+import re
 
 def parse_attributed_body(blob):
 
@@ -94,20 +94,21 @@ def parse_attributed_body(blob):
 
     try:
 
-        # remove null bytes that break plist parser
-        clean_blob = blob.replace(b'\x00', b'')
+        text = blob.decode("utf-8", errors="ignore")
 
-        data = deserialize_plist(clean_blob)
+        # remove null bytes
+        text = text.replace("\x00", "")
 
-        if isinstance(data, dict):
-            for v in data.values():
-                if isinstance(v, str):
-                    return v
+        # look for NSString marker
+        match = re.search(r'\+([^\x86]+)', text)
 
-        if isinstance(data, list):
-            for v in data:
-                if isinstance(v, str):
-                    return v
+        if match:
+            message = match.group(1).strip()
+
+            # remove leading markers like % or #
+            message = re.sub(r'^[#%]', '', message)
+
+            return message
 
     except Exception as e:
         print("Attributed parse error:", e)
