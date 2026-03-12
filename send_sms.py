@@ -98,19 +98,26 @@ def parse_attributed_body(blob):
         # remove control characters
         text = re.sub(r'[\x00-\x1F\x7F]', ' ', text)
 
-        # attempt to extract message after '#+'
-        match = re.search(r'#\+(.+)', text)
+        # collapse spaces
+        text = re.sub(r'\s+', ' ', text)
 
-        if match:
-            message = match.group(1).strip()
+        # remove known Apple metadata words
+        text = re.sub(
+            r'(NSAttributedString|NSObject|NSString|NSDictionary|NSNumber|NSValue|streamtyped)',
+            '',
+            text
+        )
 
-            # remove trailing artifacts
-            message = re.sub(r'\s{2,}', ' ', message)
+        text = text.strip()
 
-            return message
+        # heuristic: take the longest readable phrase
+        candidates = re.findall(r'[A-Za-z0-9][^A-Za-z0-9]*[A-Za-z0-9].{3,}', text)
 
-        # fallback
-        return text.strip()
+        if candidates:
+            best = max(candidates, key=len)
+            return best.strip()
+
+        return text
 
     except Exception as e:
         print("Attributed parse error:", e)
