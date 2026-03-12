@@ -85,7 +85,7 @@ def apple_time_to_unix(date_ns):
 # ATTRIBUTED BODY PARSER
 # -----------------------------
 
-import re
+from nska_deserialize import deserialize_plist
 
 def parse_attributed_body(blob):
 
@@ -93,36 +93,24 @@ def parse_attributed_body(blob):
         return None
 
     try:
-        text = blob.decode("utf-8", errors="ignore")
 
-        # remove control characters
-        text = re.sub(r'[\x00-\x1F\x7F]', ' ', text)
+        data = deserialize_plist(blob)
 
-        # collapse spaces
-        text = re.sub(r'\s+', ' ', text)
+        # NSAttributedString often becomes a dict/list structure
+        if isinstance(data, dict):
+            for v in data.values():
+                if isinstance(v, str):
+                    return v
 
-        # remove known Apple metadata words
-        text = re.sub(
-            r'(NSAttributedString|NSObject|NSString|NSDictionary|NSNumber|NSValue|streamtyped)',
-            '',
-            text
-        )
-
-        text = text.strip()
-
-        # heuristic: take the longest readable phrase
-        candidates = re.findall(r'[A-Za-z0-9][^A-Za-z0-9]*[A-Za-z0-9].{3,}', text)
-
-        if candidates:
-            best = max(candidates, key=len)
-            return best.strip()
-
-        return text
+        if isinstance(data, list):
+            for v in data:
+                if isinstance(v, str):
+                    return v
 
     except Exception as e:
         print("Attributed parse error:", e)
-        return None
 
+    return None
 
 # -----------------------------
 # EVENT TYPE DETECTION
@@ -295,21 +283,29 @@ def main():
         chat_identifier = row[10]
         chat_display_name = row[11]
         participant_count = row[12]
-
-        # -----------------------------
+        
+      # -----------------------------
         # TEXT RESOLUTION
         # -----------------------------
-
-        if text is None:
-
-            parsed = parse_attributed_body(attributed)
-
-            if parsed:
-                text = parsed
-                print("Recovered text from attributedBody:", rowid)
-
+        
+        if text is None or "NSAttributedString" in str(text):
+        
+            if attributed:
+        
+                parsed = parse_attributed_body(attributed)
+        
+                if parsed:
+                    text = parsed
+                    print("Recovered text from attributedBody:", rowid)
+        
+                else:
+                    print("Could not parse attributedBody:", rowid)
+        
             else:
-                print("Message with NULL text:", rowid)
+                print("Message without text and without attributedBody:", rowid)
+        
+        if text:
+            text = text.strip()
 
         protocol = normalize_protocol(service)
 
