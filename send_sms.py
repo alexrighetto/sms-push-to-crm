@@ -85,6 +85,8 @@ def apple_time_to_unix(date_ns):
 # ATTRIBUTED BODY PARSER
 # -----------------------------
 
+import re
+
 def parse_attributed_body(blob):
 
     if not blob:
@@ -92,14 +94,26 @@ def parse_attributed_body(blob):
 
     try:
         text = blob.decode("utf-8", errors="ignore")
-        text = text.strip()
 
-        if len(text) == 0:
-            return None
+        # remove control characters
+        text = re.sub(r'[\x00-\x1F\x7F]', ' ', text)
 
-        return text
+        # attempt to extract message after '#+'
+        match = re.search(r'#\+(.+)', text)
 
-    except:
+        if match:
+            message = match.group(1).strip()
+
+            # remove trailing artifacts
+            message = re.sub(r'\s{2,}', ' ', message)
+
+            return message
+
+        # fallback
+        return text.strip()
+
+    except Exception as e:
+        print("Attributed parse error:", e)
         return None
 
 
